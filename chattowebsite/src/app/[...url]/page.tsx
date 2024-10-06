@@ -1,4 +1,6 @@
+import { ChatWrapper } from "../components/ChatWrapper"
 import { ragChat } from "../lib/rag-chat"
+import { redis } from "../lib/redis"
 
 interface PageProps{
     params: {
@@ -12,14 +14,20 @@ function reconstructUrl({url} : {url:string[]}){
 }
 
 const Page = async ({params}: PageProps) => {
-    console.log(params)
     const reconstructedUrl = reconstructUrl({url: params.url as string[]})
-    await ragChat.context.add({
-        type: "html",
-        source: reconstructedUrl,
-        config: {chunkOverlap: 50 , chunkSize: 200},
-    })
-    return <p>hello</p>
+    const isAlreadyIndexed = await redis.sismember("indexed-urls",reconstructedUrl)
+    const sessionId = "mock-session"
+    if(!isAlreadyIndexed){
+        await ragChat.context.add({
+            type: "html",
+            source: reconstructedUrl,
+            config: {chunkOverlap: 50 , chunkSize: 200},
+        })
+        await redis.sadd("indexed-urls", reconstructedUrl)
+    }
+    return <ChatWrapper sessionId={sessionId}/>
 }
 
 export default Page
+
+//39:19
